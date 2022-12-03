@@ -4,6 +4,12 @@ Object.defineProperty(Array.prototype, 'sum', {
   },
 });
 
+function* chunk(arr, n) {
+  for (let i = 0; i < arr.length; i += n) {
+    yield arr.slice(i, i + n);
+  }
+}
+
 {
   const result = Deno.readTextFileSync('input/01.txt')
     .split('\n\n')
@@ -48,4 +54,33 @@ Object.defineProperty(Array.prototype, 'sum', {
       [0, 0]
     );
   console.log(`Day2: ${win} and ${strat}`);
+}
+
+{
+  const score = arr =>
+    arr
+      .map(b =>
+        b >= 'a' && b <= 'z'
+          ? b.charCodeAt() - 'a'.charCodeAt() + 1
+          : b.charCodeAt() - 'A'.charCodeAt() + 27
+      )
+      .sum();
+  const lines = Deno.readTextFileSync('input/03.txt').split('\n');
+  const common = lines
+    .map(l => {
+      const [left, right] = [
+        l.slice(0, l.length / 2),
+        l.slice(l.length / 2),
+      ].map(s => new Set(s));
+      return score([...left].filter(i => right.has(i)));
+    })
+    .sum();
+  const common3 = [...chunk(lines, 3)]
+    .map(l => {
+      const sets = l.map(s => new Set(s));
+      return score([...sets[0]].filter(i => sets[1].has(i) && sets[2].has(i)));
+    })
+    .sum();
+
+  console.log(`Day2: ${common} and ${common3}`);
 }
