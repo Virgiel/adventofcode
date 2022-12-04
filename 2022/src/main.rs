@@ -119,4 +119,21 @@ fn main() {
             }),
     );
     println!("Day3: {sum_common} and {sum_common3}");
+    let (countain, overlap) =
+        include_str!("../input/04.txt")
+            .split("\n")
+            .fold((0, 0), |count, l| {
+                fn parse_range(s: &str) -> (u8, u8) {
+                    let (a, b) = s.split_once("-").unwrap();
+                    (a.parse().unwrap(), b.parse().unwrap())
+                }
+                let (a, b) = l.split_once(',').unwrap();
+                let (a, b) = (parse_range(a), parse_range(b));
+
+                (
+                    count.0 + ((a.0 >= b.0 && a.1 <= b.1) || (a.0 <= b.0 && a.1 >= b.1)) as usize,
+                    count.1 + (a.1 >= b.0 && b.1 >= a.0) as usize,
+                )
+            });
+    println!("Day4: {countain} and {overlap}")
 }

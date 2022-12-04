@@ -81,6 +81,22 @@ function* chunk(arr, n) {
       return score([...sets[0]].filter(i => sets[1].has(i) && sets[2].has(i)));
     })
     .sum();
+  console.log(`Day3: ${common} and ${common3}`);
+}
 
-  console.log(`Day2: ${common} and ${common3}`);
+{
+  const [countain, overlap] = Deno.readTextFileSync('input/04.txt')
+    .split('\n')
+    .reduce(
+      (sum, l) => {
+        const [a, b] = l.split(',').map(l => l.split('-').map(n => +n));
+        return [
+          sum[0] +
+            ((a[0] >= b[0] && a[1] <= b[1]) || (a[0] <= b[0] && a[1] >= b[1])),
+          sum[1] + (a[1] >= b[0] && b[1] >= a[0]),
+        ];
+      },
+      [0, 0]
+    );
+  console.log(`Day4: ${countain} and ${overlap}`);
 }
