@@ -1,8 +1,8 @@
 #![feature(slice_partition_dedup)]
 #![feature(iter_array_chunks)]
 
-fn main() {
-    let result = include_str!("../input/01.txt")
+fn day1(input: &'static str) -> (usize, usize) {
+    let result = input
         .split("\n\n")
         .map(|l| {
             l.lines()
@@ -18,32 +18,33 @@ fn main() {
             }
             state
         });
-    println!("Day1: {} and {}", result[0], result.iter().sum::<usize>());
+    (result[0], result.iter().sum::<usize>())
+}
 
-    let (win, strat) = include_str!("../input/02.txt")
-        .lines()
-        .fold((0, 0), |sum, l| {
-            let opp = (l.as_bytes()[0] - b'A') as usize;
-            let this = (l.as_bytes()[2] - b'X') as usize;
-            let loose = [2, 0, 1][opp];
-            let win = [1, 2, 0][opp];
-            let strat = match this {
-                0 => loose,
-                1 => opp + 3,
-                _ => win + 6,
+fn day2(input: &'static str) -> (usize, usize) {
+    input.lines().fold((0, 0), |sum, l| {
+        let opp = (l.as_bytes()[0] - b'A') as usize;
+        let this = (l.as_bytes()[2] - b'X') as usize;
+        let loose = [2, 0, 1][opp];
+        let win = [1, 2, 0][opp];
+        let strat = match this {
+            0 => loose,
+            1 => opp + 3,
+            _ => win + 6,
+        };
+        let score = this
+            + if this == win {
+                6
+            } else if this == opp {
+                3
+            } else {
+                0
             };
-            let score = this
-                + if this == win {
-                    6
-                } else if this == opp {
-                    3
-                } else {
-                    0
-                };
-            (sum.0 + score + 1, sum.1 + strat + 1)
-        });
-    println!("Day2: {win} and {strat}");
+        (sum.0 + score + 1, sum.1 + strat + 1)
+    })
+}
 
+fn day3(input: &'static [u8]) -> (usize, usize) {
     fn dedup(bs: &mut [u8]) -> impl Iterator<Item = &u8> {
         bs.sort_unstable();
         bs.partition_dedup().0.iter()
@@ -60,34 +61,29 @@ fn main() {
         })
         .sum()
     }
-    let sum_common: usize = score_sum(
-        include_bytes!("../input/03.txt")
-            .to_vec()
-            .split_mut(|b| *b == b'\n')
-            .map(|l| {
-                let (left, right) = l.split_at_mut(l.len() / 2);
-                let (mut left, mut right) = (dedup(left), dedup(right));
-                std::iter::from_fn(move || {
-                    let mut l = left.next();
-                    let mut r = right.next();
-                    loop {
-                        if let (Some(lc), Some(rc)) = (&l, &r) {
-                            if lc == rc {
-                                return Some(**lc);
-                            } else if lc < rc {
-                                l = left.next()
-                            } else {
-                                r = right.next()
-                            }
-                        } else {
-                            return None;
-                        }
+    let sum_common: usize = score_sum(input.to_vec().split_mut(|b| *b == b'\n').map(|l| {
+        let (left, right) = l.split_at_mut(l.len() / 2);
+        let (mut left, mut right) = (dedup(left), dedup(right));
+        std::iter::from_fn(move || {
+            let mut l = left.next();
+            let mut r = right.next();
+            loop {
+                if let (Some(lc), Some(rc)) = (&l, &r) {
+                    if lc == rc {
+                        return Some(**lc);
+                    } else if lc < rc {
+                        l = left.next()
+                    } else {
+                        r = right.next()
                     }
-                })
-            }),
-    );
+                } else {
+                    return None;
+                }
+            }
+        })
+    }));
     let sum_common3 = score_sum(
-        include_bytes!("../input/03.txt")
+        input
             .to_vec()
             .split_mut(|b| *b == b'\n')
             .array_chunks::<3>()
@@ -118,33 +114,33 @@ fn main() {
                 })
             }),
     );
-    println!("Day3: {sum_common} and {sum_common3}");
-    let (countain, overlap) =
-        include_str!("../input/04.txt")
-            .split("\n")
-            .fold((0, 0), |count, l| {
-                fn parse_range(s: &str) -> (u8, u8) {
-                    let (a, b) = s.split_once("-").unwrap();
-                    (a.parse().unwrap(), b.parse().unwrap())
-                }
-                let (a, b) = l.split_once(',').unwrap();
-                let (a, b) = (parse_range(a), parse_range(b));
+    (sum_common, sum_common3)
+}
 
-                (
-                    count.0 + ((a.0 >= b.0 && a.1 <= b.1) || (a.0 <= b.0 && a.1 >= b.1)) as usize,
-                    count.1 + (a.1 >= b.0 && b.1 >= a.0) as usize,
-                )
-            });
-    println!("Day4: {countain} and {overlap}");
+fn day4(input: &'static str) -> (usize, usize) {
+    input.split('\n').fold((0, 0), |count, l| {
+        fn parse_range(s: &str) -> (u8, u8) {
+            let (a, b) = s.split_once('-').unwrap();
+            (a.parse().unwrap(), b.parse().unwrap())
+        }
+        let (a, b) = l.split_once(',').unwrap();
+        let (a, b) = (parse_range(a), parse_range(b));
 
-    let input = include_str!("../input/05.txt");
+        (
+            count.0 + ((a.0 >= b.0 && a.1 <= b.1) || (a.0 <= b.0 && a.1 >= b.1)) as usize,
+            count.1 + (a.1 >= b.0 && b.1 >= a.0) as usize,
+        )
+    })
+}
+
+fn day5(input: &'static str) -> (String, String) {
     let (state, cmds) = input.split_once("\n\n").unwrap();
     let mut simple: Vec<Vec<u8>> = {
-        let mut lines = state.rsplit("\n");
+        let mut lines = state.rsplit('\n');
         let count = lines.next().unwrap().len() / 4 + 1;
         let mut stacks: Vec<Vec<u8>> = vec![Vec::<u8>::new(); count];
         for l in lines {
-            for (i, b) in l.as_bytes().into_iter().skip(1).step_by(4).enumerate() {
+            for (i, b) in l.as_bytes().iter().skip(1).step_by(4).enumerate() {
                 if *b != b' ' {
                     stacks[i].push(*b);
                 }
@@ -154,7 +150,7 @@ fn main() {
     };
     let mut cmpx = simple.clone();
 
-    for cmd in cmds.split("\n") {
+    for cmd in cmds.split('\n') {
         let mut words = cmd.split(' ');
         let amount = words.nth(1).unwrap().parse::<usize>().unwrap();
         let from = words.nth(1).unwrap().parse::<usize>().unwrap() - 1;
@@ -171,9 +167,34 @@ fn main() {
     }
     fn fmt_stacks(stacks: &[Vec<u8>]) -> String {
         stacks
-            .into_iter()
+            .iter()
             .map(|s| std::char::from_u32(*s.last().unwrap() as u32).unwrap())
             .collect()
     }
-    println!("Day5: {} and {}", fmt_stacks(&simple), fmt_stacks(&cmpx))
+    (fmt_stacks(&simple), fmt_stacks(&cmpx))
+}
+
+#[test]
+fn test() {
+    assert_eq!(day1(include_str!("../input/t01.txt")), (24000, 45000));
+    assert_eq!(day2(include_str!("../input/t02.txt")), (15, 12));
+    assert_eq!(day3(include_bytes!("../input/t03.txt")), (157, 70));
+    assert_eq!(day4(include_str!("../input/t04.txt")), (2, 4));
+    assert_eq!(
+        day5(include_str!("../input/t05.txt")),
+        ("CMZ".into(), "MCD".into())
+    )
+}
+
+fn main() {
+    let (first, second) = day1(include_str!("../input/01.txt"));
+    println!("Day1: {first} and {second}");
+    let (first, second) = day2(include_str!("../input/02.txt"));
+    println!("Day2: {first} and {second}");
+    let (first, second) = day3(include_bytes!("../input/03.txt"));
+    println!("Day3: {first} and {second}");
+    let (first, second) = day4(include_str!("../input/04.txt"));
+    println!("Day4: {first} and {second}");
+    let (first, second) = day5(include_str!("../input/05.txt"));
+    println!("Day5: {first} and {second}");
 }
