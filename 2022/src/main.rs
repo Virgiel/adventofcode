@@ -135,5 +135,45 @@ fn main() {
                     count.1 + (a.1 >= b.0 && b.1 >= a.0) as usize,
                 )
             });
-    println!("Day4: {countain} and {overlap}")
+    println!("Day4: {countain} and {overlap}");
+
+    let input = include_str!("../input/05.txt");
+    let (state, cmds) = input.split_once("\n\n").unwrap();
+    let mut simple: Vec<Vec<u8>> = {
+        let mut lines = state.rsplit("\n");
+        let count = lines.next().unwrap().len() / 4 + 1;
+        let mut stacks: Vec<Vec<u8>> = vec![Vec::<u8>::new(); count];
+        for l in lines {
+            for (i, b) in l.as_bytes().into_iter().skip(1).step_by(4).enumerate() {
+                if *b != b' ' {
+                    stacks[i].push(*b);
+                }
+            }
+        }
+        stacks
+    };
+    let mut cmpx = simple.clone();
+
+    for cmd in cmds.split("\n") {
+        let mut words = cmd.split(' ');
+        let amount = words.nth(1).unwrap().parse::<usize>().unwrap();
+        let from = words.nth(1).unwrap().parse::<usize>().unwrap() - 1;
+        let to = words.nth(1).unwrap().parse::<usize>().unwrap() - 1;
+
+        for _ in 0..amount {
+            let item = simple[from].pop().unwrap();
+            simple[to].push(item);
+        }
+
+        let from_off = cmpx[from].len() - amount;
+        let items: Vec<u8> = cmpx[from].drain(from_off..).collect();
+        cmpx[to].extend(items);
+    }
+    fn fmt_stacks(stacks: &[Vec<u8>]) -> String {
+        stacks
+            .into_iter()
+            .map(|s| std::char::from_u32(*s.last().unwrap() as u32).unwrap())
+            .collect()
+    }
+    println!("Day5: {} and {}", fmt_stacks(&simple), fmt_stacks(&cmpx))
 }

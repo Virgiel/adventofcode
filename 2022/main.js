@@ -100,3 +100,39 @@ function* chunk(arr, n) {
     );
   console.log(`Day4: ${countain} and ${overlap}`);
 }
+
+{
+  const [state, cmds] = Deno.readTextFileSync('input/05.txt').split('\n\n');
+
+  const parseState = () => {
+    const lines = state.split('\n').reverse();
+    const count = lines[0].length / 4 + 1;
+    const stacks = Array.from({ length: count }, _ => []);
+    for (const line of lines.splice(1)) {
+      for (let i = 1; i < line.length; i += 4) {
+        if (line[i] != ' ') {
+          stacks[Math.floor(i / 4)].push(line[i]);
+        }
+      }
+    }
+    return stacks;
+  };
+
+  const simple = parseState(state);
+  const cmpx = parseState(state);
+
+  for (const cmd of cmds.split('\n')) {
+    const words = cmd.split(' ');
+    const amount = +words[1];
+    const from = +words[3] - 1;
+    const to = +words[5] - 1;
+
+    for (let i = 0; i < amount; i++) {
+      simple[to].push(simple[from].pop());
+    }
+    cmpx[to] = cmpx[to].concat(cmpx[from].splice(cmpx[from].length - amount));
+  }
+  const fmt = stacks => stacks.map(s => s[s.length - 1]).join('');
+
+  console.log(`Day5: ${fmt(simple)} and ${fmt(cmpx)}`);
+}
