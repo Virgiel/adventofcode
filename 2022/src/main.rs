@@ -45,76 +45,39 @@ fn day2(input: &'static str) -> (usize, usize) {
 }
 
 fn day3(input: &'static [u8]) -> (usize, usize) {
-    fn dedup(bs: &mut [u8]) -> impl Iterator<Item = &u8> {
-        bs.sort_unstable();
-        bs.partition_dedup().0.iter()
+    fn bitset(s: &[u8]) -> u64 {
+        let mut set = 0;
+        for b in s {
+            let offset = match b {
+                b'a'..=b'z' => b - b'a' + 1,
+                _ => b - b'A' + 27,
+            };
+            set |= 1 << offset
+        }
+        set
     }
-    fn score_sum(iter: impl Iterator<Item = impl Iterator<Item = u8>>) -> usize {
-        iter.map(|iter| {
-            iter.map(|b| {
-                (match b {
-                    b'a'..=b'z' => b - b'a' + 1,
-                    _ => b - b'A' + 27,
-                }) as usize
-            })
-            .sum::<usize>()
-        })
-        .sum()
+    fn bitset_sum(set: u64) -> usize {
+        (1..=52)
+            .into_iter()
+            .filter(move |n| (1 << n & set) != 0)
+            .sum()
     }
-    let sum_common: usize = score_sum(input.to_vec().split_mut(|b| *b == b'\n').map(|l| {
-        let (left, right) = l.split_at_mut(l.len() / 2);
-        let (mut left, mut right) = (dedup(left), dedup(right));
-        std::iter::from_fn(move || {
-            let mut l = left.next();
-            let mut r = right.next();
-            loop {
-                if let (Some(lc), Some(rc)) = (&l, &r) {
-                    if lc == rc {
-                        return Some(**lc);
-                    } else if lc < rc {
-                        l = left.next()
-                    } else {
-                        r = right.next()
-                    }
-                } else {
-                    return None;
-                }
-            }
+    input
+        .to_vec()
+        .split_mut(|b| *b == b'\n')
+        .array_chunks::<3>()
+        .fold((0, 0), |sum, l| {
+            (
+                sum.0
+                    + l.iter()
+                        .map(|l| {
+                            let (left, right) = l.split_at(l.len() / 2);
+                            bitset_sum(bitset(left) & bitset(right))
+                        })
+                        .sum::<usize>(),
+                sum.1 + bitset_sum(bitset(l[0]) & bitset(l[1]) & bitset(l[2])),
+            )
         })
-    }));
-    let sum_common3 = score_sum(
-        input
-            .to_vec()
-            .split_mut(|b| *b == b'\n')
-            .array_chunks::<3>()
-            .map(|l| {
-                let [a, b, c] = l;
-                let mut ai = dedup(a);
-                let mut bi = dedup(b);
-                let mut ci = dedup(c);
-                std::iter::from_fn(move || {
-                    let mut ac = ai.next();
-                    let mut bc = bi.next();
-                    let mut cc = ci.next();
-                    loop {
-                        if let (Some(a), Some(b), Some(c)) = (&ac, &bc, &cc) {
-                            if a == b && b == c {
-                                return Some(**a);
-                            } else if a < b {
-                                ac = ai.next()
-                            } else if b < c {
-                                bc = bi.next()
-                            } else {
-                                cc = ci.next()
-                            }
-                        } else {
-                            return None;
-                        }
-                    }
-                })
-            }),
-    );
-    (sum_common, sum_common3)
 }
 
 fn day4(input: &'static str) -> (usize, usize) {
