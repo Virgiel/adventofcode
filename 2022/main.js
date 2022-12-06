@@ -10,6 +10,12 @@ function* chunk(arr, n) {
   }
 }
 
+function* range(start, end, step = 1) {
+  for (let i = start; i < end; i += step) {
+    yield i;
+  }
+}
+
 {
   const result = Deno.readTextFileSync('input/01.txt')
     .split('\n\n')
@@ -135,4 +141,22 @@ function* chunk(arr, n) {
   const fmt = stacks => stacks.map(s => s[s.length - 1]).join('');
 
   console.log(`Day5: ${fmt(simple)} and ${fmt(cmpx)}`);
+}
+
+{
+  const find = (str, n) => {
+    for (const i of range(n, str.length)) {
+      const slice = str.slice(i - n, i);
+      const unique = slice
+        .split('')
+        .every(c => slice.split('').filter(it => it == c).length == 1);
+      if (unique) {
+        return i;
+      }
+    }
+  };
+
+  const input = Deno.readTextFileSync('input/06.txt');
+
+  console.log(`Day5: ${find(input, 4)} and ${find(input, 14)}`);
 }

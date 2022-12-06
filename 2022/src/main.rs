@@ -137,6 +137,24 @@ fn day5(input: &'static str) -> (String, String) {
     (fmt_stacks(&simple), fmt_stacks(&cmpx))
 }
 
+fn day6(str: &'static [u8]) -> (usize, usize) {
+    fn find<const N: usize>(str: &'static [u8]) -> usize {
+        str.windows(N)
+            .position(|win| {
+                let mut set: u32 = 0;
+                win.iter().all(|c| {
+                    let off = c - b'a';
+                    set ^= 1 << off;
+                    (1 << off & set) != 0
+                })
+            })
+            .unwrap()
+            + N
+    }
+
+    (find::<4>(str), find::<14>(str))
+}
+
 #[test]
 fn test() {
     assert_eq!(day1(include_str!("../input/t01.txt")), (24000, 45000));
@@ -160,4 +178,6 @@ fn main() {
     println!("Day4: {first} and {second}");
     let (first, second) = day5(include_str!("../input/05.txt"));
     println!("Day5: {first} and {second}");
+    let (first, second) = day6(include_bytes!("../input/06.txt"));
+    println!("Day6: {first} and {second}");
 }
