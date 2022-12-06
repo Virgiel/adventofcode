@@ -1,7 +1,7 @@
 #![feature(slice_partition_dedup)]
 #![feature(iter_array_chunks)]
 
-fn day1(input: &'static str) -> (usize, usize) {
+fn day1(input: &str) -> (usize, usize) {
     let result = input
         .split("\n\n")
         .map(|l| {
@@ -21,10 +21,10 @@ fn day1(input: &'static str) -> (usize, usize) {
     (result[0], result.iter().sum::<usize>())
 }
 
-fn day2(input: &'static str) -> (usize, usize) {
-    input.lines().fold((0, 0), |sum, l| {
-        let opp = (l.as_bytes()[0] - b'A') as usize;
-        let this = (l.as_bytes()[2] - b'X') as usize;
+fn day2(input: &[u8]) -> (usize, usize) {
+    input.split(|b| *b == b'\n').fold((0, 0), |sum, l| {
+        let opp = (l[0] - b'A') as usize;
+        let this = (l[2] - b'X') as usize;
         let loose = [2, 0, 1][opp];
         let win = [1, 2, 0][opp];
         let strat = match this {
@@ -44,7 +44,7 @@ fn day2(input: &'static str) -> (usize, usize) {
     })
 }
 
-fn day3(input: &'static [u8]) -> (usize, usize) {
+fn day3(input: &[u8]) -> (usize, usize) {
     fn bitset(s: &[u8]) -> u64 {
         let mut set = 0;
         for b in s {
@@ -63,8 +63,7 @@ fn day3(input: &'static [u8]) -> (usize, usize) {
             .sum()
     }
     input
-        .to_vec()
-        .split_mut(|b| *b == b'\n')
+        .split(|b| *b == b'\n')
         .array_chunks::<3>()
         .fold((0, 0), |sum, l| {
             (
@@ -80,7 +79,7 @@ fn day3(input: &'static [u8]) -> (usize, usize) {
         })
 }
 
-fn day4(input: &'static str) -> (usize, usize) {
+fn day4(input: &str) -> (usize, usize) {
     input.split('\n').fold((0, 0), |count, l| {
         fn parse_range(s: &str) -> (u8, u8) {
             let (a, b) = s.split_once('-').unwrap();
@@ -96,7 +95,7 @@ fn day4(input: &'static str) -> (usize, usize) {
     })
 }
 
-fn day5(input: &'static str) -> (String, String) {
+fn day5(input: &str) -> (String, String) {
     let (state, cmds) = input.split_once("\n\n").unwrap();
     let mut simple: Vec<Vec<u8>> = {
         let mut lines = state.rsplit('\n');
@@ -137,8 +136,8 @@ fn day5(input: &'static str) -> (String, String) {
     (fmt_stacks(&simple), fmt_stacks(&cmpx))
 }
 
-fn day6(str: &'static [u8]) -> (usize, usize) {
-    fn find<const N: usize>(str: &'static [u8]) -> usize {
+fn day6(str: &[u8]) -> (usize, usize) {
+    fn find<const N: usize>(str: &[u8]) -> usize {
         str.windows(N)
             .position(|win| {
                 let mut set: u32 = 0;
@@ -158,7 +157,7 @@ fn day6(str: &'static [u8]) -> (usize, usize) {
 #[test]
 fn test() {
     assert_eq!(day1(include_str!("../input/t01.txt")), (24000, 45000));
-    assert_eq!(day2(include_str!("../input/t02.txt")), (15, 12));
+    assert_eq!(day2(include_bytes!("../input/t02.txt")), (15, 12));
     assert_eq!(day3(include_bytes!("../input/t03.txt")), (157, 70));
     assert_eq!(day4(include_str!("../input/t04.txt")), (2, 4));
     assert_eq!(
@@ -170,7 +169,7 @@ fn test() {
 fn main() {
     let (first, second) = day1(include_str!("../input/01.txt"));
     println!("Day1: {first} and {second}");
-    let (first, second) = day2(include_str!("../input/02.txt"));
+    let (first, second) = day2(include_bytes!("../input/02.txt"));
     println!("Day2: {first} and {second}");
     let (first, second) = day3(include_bytes!("../input/03.txt"));
     println!("Day3: {first} and {second}");
