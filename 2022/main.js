@@ -158,5 +158,42 @@ function* range(start, end, step = 1) {
 
   const input = Deno.readTextFileSync('input/06.txt');
 
-  console.log(`Day5: ${find(input, 4)} and ${find(input, 14)}`);
+  console.log(`Day6: ${find(input, 4)} and ${find(input, 14)}`);
+}
+
+{
+  const lines = Deno.readTextFileSync('input/07.txt').split('\n').reverse();
+  const dirs = [];
+
+  const dir_size = (lines, dirs) => {
+    lines.pop(); // $ cd name
+    lines.pop(); // $ ls
+    let size = 0;
+    let subdir = 0;
+
+    while (lines.length > 0 && !lines[lines.length - 1].startsWith('$')) {
+      const cmd = lines.pop();
+      if (cmd.startsWith('dir ')) {
+        subdir++;
+      } else {
+        size += +cmd.split(' ')[0];
+      }
+    }
+
+    for (; subdir > 0; subdir--) {
+      size += dir_size(lines, dirs);
+    }
+    lines.pop();
+    dirs.push(size);
+    return size;
+  };
+  dir_size(lines, dirs);
+  const unused_space = 70000000 - dirs[dirs.length - 1];
+  const remove_space = 30000000 - unused_space;
+  dirs.sort((a, b) => a - b);
+  console.log(
+    `Day6: ${dirs.filter(s => s <= 100000).sum()} and ${dirs.find(
+      s => s >= remove_space
+    )}`
+  );
 }

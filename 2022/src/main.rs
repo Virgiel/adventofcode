@@ -1,6 +1,8 @@
 #![feature(slice_partition_dedup)]
 #![feature(iter_array_chunks)]
 
+use std::iter::Peekable;
+
 fn day1(input: &str) -> (usize, usize) {
     let result = input
         .split("\n\n")
@@ -154,6 +156,49 @@ fn day6(str: &[u8]) -> (usize, usize) {
     (find::<4>(str), find::<14>(str))
 }
 
+fn day7(str: &str) -> (usize, usize) {
+    let mut lines = str.split('\n').peekable();
+    let mut dirs = Vec::new();
+    fn dir_size<'a>(
+        lines: &mut Peekable<impl Iterator<Item = &'a str>>,
+        dirs: &mut Vec<usize>,
+    ) -> usize {
+        lines.next(); // $ cd name
+        lines.next(); // $ ls
+        let mut size = 0;
+        let mut subdir = 0;
+
+        while let Some(l) = lines.peek() {
+            if l.starts_with("$") {
+                break;
+            } else if l.strip_prefix("dir ").is_some() {
+                subdir += 1;
+            } else {
+                size += l.split_once(" ").unwrap().0.parse::<usize>().unwrap()
+            }
+            lines.next();
+        }
+
+        for _ in 0..subdir {
+            size += dir_size(lines, dirs);
+        }
+
+        lines.next(); // cd ..
+
+        dirs.push(size);
+
+        return size;
+    }
+    dir_size(&mut lines, &mut dirs);
+    let unused_space = 70000000 - dirs.last().unwrap();
+    let remove_space = 30000000 - unused_space;
+    dirs.sort_unstable();
+    (
+        dirs.iter().filter(|size| (**size <= 100000)).sum(),
+        *dirs.iter().find(|it| **it >= remove_space).unwrap(),
+    )
+}
+
 #[test]
 fn test() {
     assert_eq!(day1(include_str!("../input/t01.txt")), (24000, 45000));
@@ -163,7 +208,8 @@ fn test() {
     assert_eq!(
         day5(include_str!("../input/t05.txt")),
         ("CMZ".into(), "MCD".into())
-    )
+    );
+    assert_eq!(day7(include_str!("../input/t07.txt")), (95437, 24933642))
 }
 
 fn main() {
@@ -179,4 +225,6 @@ fn main() {
     println!("Day5: {first} and {second}");
     let (first, second) = day6(include_bytes!("../input/06.txt"));
     println!("Day6: {first} and {second}");
+    let (first, second) = day7(include_str!("../input/07.txt"));
+    println!("Day7: {first} and {second}");
 }
