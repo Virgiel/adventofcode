@@ -10,10 +10,12 @@ function* chunk(arr, n) {
   }
 }
 
-function* range(start, end, step = 1) {
+function range(start, end, step = 1) {
+  const map = [];
   for (let i = start; i < end; i += step) {
-    yield i;
+    map.push(i);
   }
+  return map;
 }
 
 {
@@ -192,8 +194,51 @@ function* range(start, end, step = 1) {
   const remove_space = 30000000 - unused_space;
   dirs.sort((a, b) => a - b);
   console.log(
-    `Day6: ${dirs.filter(s => s <= 100000).sum()} and ${dirs.find(
+    `Day7: ${dirs.filter(s => s <= 100000).sum()} and ${dirs.find(
       s => s >= remove_space
     )}`
   );
+}
+
+{
+  const input = Deno.readTextFileSync('input/08.txt');
+  const width = input.indexOf('\n');
+  const height = input.split('\n').length;
+
+  const at = (c, r) => input[r * (width + 1) + c];
+
+  let nb_visible = 0;
+  let max = 0;
+
+  for (const c of range(0, width)) {
+    for (const r of range(0, height)) {
+      if (c == 0 || c == width - 1 || r == 0 || r == height - 1) {
+        nb_visible++;
+      } else {
+        const value = at(c, r);
+
+        const left = range(0, c)
+          .reverse()
+          .findIndex(c => at(c, r) >= value);
+        const right = range(c + 1, width).findIndex(c => at(c, r) >= value);
+        const top = range(0, r)
+          .reverse()
+          .findIndex(r => at(c, r) >= value);
+        const btm = range(r + 1, height).findIndex(r => at(c, r) >= value);
+
+        if (left == -1 || right == -1 || top == -1 || btm == -1) {
+          nb_visible++;
+        }
+
+        const scenic_view =
+          (left != -1 ? left + 1 : c) *
+          (right != -1 ? right + 1 : width - c - 1) *
+          (top != -1 ? top + 1 : r) *
+          (btm != -1 ? btm + 1 : height - r - 1);
+        max = Math.max(max, scenic_view);
+      }
+    }
+  }
+
+  console.log(`Day8: ${nb_visible} and ${max}`);
 }

@@ -169,12 +169,12 @@ fn day7(str: &str) -> (usize, usize) {
         let mut subdir = 0;
 
         while let Some(l) = lines.peek() {
-            if l.starts_with("$") {
+            if l.starts_with('$') {
                 break;
             } else if l.strip_prefix("dir ").is_some() {
                 subdir += 1;
             } else {
-                size += l.split_once(" ").unwrap().0.parse::<usize>().unwrap()
+                size += l.split_once(' ').unwrap().0.parse::<usize>().unwrap()
             }
             lines.next();
         }
@@ -187,7 +187,7 @@ fn day7(str: &str) -> (usize, usize) {
 
         dirs.push(size);
 
-        return size;
+        size
     }
     dir_size(&mut lines, &mut dirs);
     let unused_space = 70000000 - dirs.last().unwrap();
@@ -197,6 +197,42 @@ fn day7(str: &str) -> (usize, usize) {
         dirs.iter().filter(|size| (**size <= 100000)).sum(),
         *dirs.iter().find(|it| **it >= remove_space).unwrap(),
     )
+}
+
+fn day8(input: &[u8]) -> (usize, usize) {
+    let width = input.iter().position(|b| *b == b'\n').unwrap();
+    let height = input.split(|b| *b == b'\n').count();
+
+    let at = |c, r| input[r * (width + 1) + c];
+
+    let mut nb_visible = 0;
+    let mut max = 0;
+
+    for c in 0..width {
+        for r in 0..height {
+            if c == 0 || c == width - 1 || r == 0 || r == height - 1 {
+                // Side are always visible from outside and have null scenic view
+                nb_visible += 1;
+            } else {
+                let value = at(c, r);
+
+                let left = (0..c).rev().position(|c| at(c, r) >= value);
+                let right = (c + 1..width).position(|c| at(c, r) >= value);
+                let top = (0..r).rev().position(|r| at(c, r) >= value);
+                let btm = (r + 1..height).position(|r| at(c, r) >= value);
+
+                if left.is_none() || right.is_none() || top.is_none() || btm.is_none() {
+                    nb_visible += 1;
+                }
+                let scenic_view = (left.map(|it| it + 1).unwrap_or(c))
+                    * (right.map(|it| it + 1).unwrap_or(width - c - 1))
+                    * (top.map(|it| it + 1).unwrap_or(r))
+                    * (btm.map(|it| it + 1).unwrap_or(height - r - 1));
+                max = scenic_view.max(max);
+            }
+        }
+    }
+    (nb_visible, max)
 }
 
 #[test]
@@ -209,7 +245,8 @@ fn test() {
         day5(include_str!("../input/t05.txt")),
         ("CMZ".into(), "MCD".into())
     );
-    assert_eq!(day7(include_str!("../input/t07.txt")), (95437, 24933642))
+    assert_eq!(day7(include_str!("../input/t07.txt")), (95437, 24933642));
+    assert_eq!(day8(include_bytes!("../input/t08.txt")), (21, 8));
 }
 
 fn main() {
@@ -227,4 +264,6 @@ fn main() {
     println!("Day6: {first} and {second}");
     let (first, second) = day7(include_str!("../input/07.txt"));
     println!("Day7: {first} and {second}");
+    let (first, second) = day8(include_bytes!("../input/08.txt"));
+    println!("Day8: {first} and {second}");
 }
