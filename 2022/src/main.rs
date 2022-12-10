@@ -281,6 +281,42 @@ fn day9(input: &str) -> (usize, usize) {
     (rope2_set.len(), rope10_set.len())
 }
 
+fn day10(input: &str) -> (usize, String) {
+    let mut reg = 1;
+    let mut sum = 0;
+    let mut cycle = 0;
+    let mut screen = String::with_capacity(41 * 6);
+
+    let mut tick = |reg| {
+        cycle += 1;
+        let off = cycle % 40;
+        if off >= reg && off < reg + 3 {
+            screen.push('#');
+        } else {
+            screen.push('.');
+        }
+        if off == 0 {
+            screen.push('\n');
+        }
+        if (cycle - 20) % 40 == 0 {
+            sum += reg * cycle;
+        }
+    };
+
+    for cmd in input.split('\n') {
+        if let Some((_, amount)) = cmd.split_once(' ') {
+            // addx
+            tick(reg);
+            tick(reg);
+            reg += amount.parse::<i16>().unwrap();
+        } else {
+            // noop
+            tick(reg);
+        }
+    }
+    (sum as usize, screen)
+}
+
 #[test]
 fn test() {
     assert_eq!(day1(include_str!("../input/t01.txt")), (24000, 45000));
@@ -295,6 +331,7 @@ fn test() {
     assert_eq!(day8(include_bytes!("../input/t08.txt")), (21, 8));
     assert_eq!(day9(include_str!("../input/t09.txt")), (13, 1));
     assert_eq!(day9(include_str!("../input/t09_2.txt")), (88, 36));
+    assert_eq!(day10(include_str!("../input/t10.txt")).0, 13140);
 }
 
 fn main() {
@@ -316,4 +353,6 @@ fn main() {
     println!("Day8: {first} and {second}");
     let (first, second) = day9(include_str!("../input/09.txt"));
     println!("Day9: {first} and {second}");
+    let (first, second) = day10(include_str!("../input/10.txt"));
+    println!("Day10: {first} and \n{second}");
 }
