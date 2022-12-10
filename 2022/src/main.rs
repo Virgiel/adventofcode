@@ -1,7 +1,7 @@
 #![feature(slice_partition_dedup)]
 #![feature(iter_array_chunks)]
 
-use std::iter::Peekable;
+use std::{collections::BTreeSet, iter::Peekable};
 
 fn day1(input: &str) -> (usize, usize) {
     let result = input
@@ -235,6 +235,52 @@ fn day8(input: &[u8]) -> (usize, usize) {
     (nb_visible, max)
 }
 
+fn day9(input: &str) -> (usize, usize) {
+    let mut head = (0i16, 0i16);
+    let mut knots = [head; 10];
+    let mut rope2_set = BTreeSet::new();
+    let mut rope10_set = BTreeSet::new();
+
+    fn mov(tail: &mut (i16, i16), head: (i16, i16)) {
+        let x = head.0 - tail.0;
+        let y = head.1 - tail.1;
+        if x.abs() > 1 || y.abs() > 1 {
+            if x != 0 {
+                tail.0 += x / x.abs();
+            }
+
+            if y != 0 {
+                tail.1 += y / y.abs();
+            }
+        }
+    }
+
+    for l in input.split('\n') {
+        let (dir, len) = (l.as_bytes()[0], l[2..].parse::<u8>().unwrap());
+        for _ in 0..len {
+            // Move head
+            match dir {
+                b'U' => head.1 += 1,
+                b'L' => head.0 -= 1,
+                b'R' => head.0 += 1,
+                _ => head.1 -= 1,
+            }
+
+            // Move tail
+            mov(&mut knots[8], head);
+            for i in (0..8).rev() {
+                let head = knots[i + 1];
+                mov(&mut knots[i], head)
+            }
+
+            // Register pos
+            rope2_set.insert(knots[8]);
+            rope10_set.insert(knots[0]);
+        }
+    }
+    (rope2_set.len(), rope10_set.len())
+}
+
 #[test]
 fn test() {
     assert_eq!(day1(include_str!("../input/t01.txt")), (24000, 45000));
@@ -247,6 +293,8 @@ fn test() {
     );
     assert_eq!(day7(include_str!("../input/t07.txt")), (95437, 24933642));
     assert_eq!(day8(include_bytes!("../input/t08.txt")), (21, 8));
+    assert_eq!(day9(include_str!("../input/t09.txt")), (13, 1));
+    assert_eq!(day9(include_str!("../input/t09_2.txt")), (88, 36));
 }
 
 fn main() {
@@ -266,4 +314,6 @@ fn main() {
     println!("Day7: {first} and {second}");
     let (first, second) = day8(include_bytes!("../input/08.txt"));
     println!("Day8: {first} and {second}");
+    let (first, second) = day9(include_str!("../input/09.txt"));
+    println!("Day9: {first} and {second}");
 }
