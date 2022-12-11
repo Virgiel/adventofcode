@@ -1,5 +1,6 @@
 #![feature(slice_partition_dedup)]
 #![feature(iter_array_chunks)]
+#![feature(get_many_mut)]
 
 use std::{collections::BTreeSet, iter::Peekable};
 
@@ -120,14 +121,14 @@ fn day5(input: &str) -> (String, String) {
         let from = words.nth(1).unwrap().parse::<usize>().unwrap() - 1;
         let to = words.nth(1).unwrap().parse::<usize>().unwrap() - 1;
 
+        let [f, t] = simple.get_many_mut([from, to]).unwrap();
         for _ in 0..amount {
-            let item = simple[from].pop().unwrap();
-            simple[to].push(item);
+            let item = f.pop().unwrap();
+            t.push(item);
         }
 
-        let from_off = cmpx[from].len() - amount;
-        let items: Vec<u8> = cmpx[from].drain(from_off..).collect();
-        cmpx[to].extend(items);
+        let [f, t] = cmpx.get_many_mut([from, to]).unwrap();
+        t.extend(f.drain(f.len() - amount..));
     }
     fn fmt_stacks(stacks: &[Vec<u8>]) -> String {
         stacks
@@ -317,6 +318,98 @@ fn day10(input: &str) -> (usize, String) {
     (sum as usize, screen)
 }
 
+fn day11(input: &str) -> (usize, usize) {
+    fn cmp<const N: usize, const DIV: u64>(input: &str) -> usize {
+        enum Op {
+            Add(u8),
+            MulSelf,
+            Mul(u8),
+        }
+
+        impl Op {
+            pub fn apply(&self, value: u64) -> u64 {
+                match self {
+                    Op::Add(v) => value + *v as u64,
+                    Op::MulSelf => value * value,
+                    Op::Mul(v) => value * *v as u64,
+                }
+            }
+        }
+
+        struct Monkey {
+            items: Vec<u64>,
+            operation: Op,
+            test: u8,
+            if_true: u8,
+            if_false: u8,
+        }
+
+        let mut monkeys: Vec<_> = input
+            .split("\n\n")
+            .map(|m| {
+                let mut lines = m.split('\n').skip(1);
+                let items = lines
+                    .next()
+                    .unwrap()
+                    .strip_prefix("  Starting items: ")
+                    .unwrap()
+                    .split(", ")
+                    .map(|l| l.parse().unwrap())
+                    .collect();
+                let operation = {
+                    let (op, value) = lines
+                        .next()
+                        .unwrap()
+                        .strip_prefix("  Operation: new = old ")
+                        .unwrap()
+                        .split_once(' ')
+                        .unwrap();
+                    if op == "+" {
+                        Op::Add(value.parse().unwrap())
+                    } else if value == "old" {
+                        Op::MulSelf
+                    } else {
+                        Op::Mul(value.parse().unwrap())
+                    }
+                };
+                let sp =
+                    |str: &str, prefix: &str| str.strip_prefix(prefix).unwrap().parse().unwrap();
+                let test = sp(lines.next().unwrap(), "  Test: divisible by ");
+                let if_true = sp(lines.next().unwrap(), "    If true: throw to monkey ");
+                let if_false = sp(lines.next().unwrap(), "    If false: throw to monkey ");
+
+                Monkey {
+                    items,
+                    operation,
+                    test,
+                    if_true,
+                    if_false,
+                }
+            })
+            .collect();
+        let divisor: u64 = monkeys.iter().map(|m| m.test as u64).product();
+        let mut counts: Vec<_> = monkeys.iter().map(|_| 0).collect();
+        for _ in 0..N {
+            for i in 0..monkeys.len() {
+                let indices = [i, monkeys[i].if_true as usize, monkeys[i].if_false as usize];
+                let [m, m_true, m_false] = monkeys.get_many_mut(indices).unwrap();
+                counts[i] += m.items.len();
+                for worry in m.items.drain(..) {
+                    let worry = (m.operation.apply(worry) / DIV) % divisor;
+                    if worry % m.test as u64 == 0 {
+                        m_true.items.push(worry);
+                    } else {
+                        m_false.items.push(worry);
+                    }
+                }
+            }
+        }
+        counts.sort_unstable();
+        counts[counts.len() - 2..].iter().product()
+    }
+    (cmp::<20, 3>(input), cmp::<10000, 1>(input))
+}
+
 #[test]
 fn test() {
     assert_eq!(day1(include_str!("../input/t01.txt")), (24000, 45000));
@@ -332,6 +425,7 @@ fn test() {
     assert_eq!(day9(include_str!("../input/t09.txt")), (13, 1));
     assert_eq!(day9(include_str!("../input/t09_2.txt")), (88, 36));
     assert_eq!(day10(include_str!("../input/t10.txt")).0, 13140);
+    assert_eq!(day11(include_str!("../input/t11.txt")), (10605, 2713310158));
 }
 
 fn main() {
@@ -355,4 +449,6 @@ fn main() {
     println!("Day9: {first} and {second}");
     let (first, second) = day10(include_str!("../input/10.txt"));
     println!("Day10: {first} and \n{second}");
+    let (first, second) = day11(include_str!("../input/11.txt"));
+    println!("Day11: {first} and {second}");
 }
