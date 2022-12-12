@@ -410,6 +410,81 @@ fn day11(input: &str) -> (usize, usize) {
     (cmp::<20, 3>(input), cmp::<10000, 1>(input))
 }
 
+fn day12(input: &[u8]) -> (u16, u16) {
+    let (grid, start, end, w) = {
+        let mut grid = Vec::new();
+        let mut start = (0, 0);
+        let mut end = (0, 0);
+        let mut w = 0;
+
+        for (r, l) in input.split(|b| *b == b'\n').enumerate() {
+            w = l.len();
+            for (c, b) in l.iter().enumerate() {
+                grid.push(match b {
+                    b'S' => {
+                        start = (c, r);
+                        b'a'
+                    }
+                    b'E' => {
+                        end = (c, r);
+                        b'z'
+                    }
+                    c => *c,
+                })
+            }
+        }
+        (grid, start, end, w)
+    };
+
+    fn dist_from(grid: &[u8], w: usize, start: (usize, usize), end: (usize, usize)) -> u16 {
+        let mut visited = vec![false; grid.len()];
+        let mut paths = vec![(start, 0)];
+        loop {
+            let Some(pos) = paths
+                .iter()
+                .enumerate()
+                .min_by_key(|(_, (_, dist))| dist)
+                .map(|(i, _)| i) else {
+                break u16::MAX;
+            };
+            let (pos, dist) = paths.swap_remove(pos);
+            if pos == end {
+                break dist;
+            }
+            let current = grid[pos.1 * w + pos.0];
+            let new_paths = [(1, 0), (0, 1)]
+                .into_iter()
+                .map(|(c, r)| {
+                    [
+                        (pos.0.wrapping_sub(c), pos.1.wrapping_sub(r)),
+                        (pos.0 + c, pos.1 + r),
+                    ]
+                })
+                .flatten()
+                // Filter positions outside of the grid
+                .filter_map(|pos| {
+                    ((pos.0 < w && pos.1 < grid.len() / w)
+                        && grid[pos.1 * w + pos.0] <= current + 1
+                        && !visited[pos.1 * w + pos.0])
+                        .then(|| {
+                            visited[pos.1 * w + pos.0] = true;
+                            (pos, dist + 1)
+                        })
+                });
+            paths.extend(new_paths);
+        }
+    }
+
+    (
+        dist_from(&grid, w, start, end),
+        grid.iter()
+            .enumerate()
+            .filter_map(|(i, b)| (*b == b'a').then(|| dist_from(&grid, w, (i % w, i / w), end)))
+            .min()
+            .unwrap_or_default(),
+    )
+}
+
 #[test]
 fn test() {
     assert_eq!(day1(include_str!("../input/t01.txt")), (24000, 45000));
@@ -426,6 +501,7 @@ fn test() {
     assert_eq!(day9(include_str!("../input/t09_2.txt")), (88, 36));
     assert_eq!(day10(include_str!("../input/t10.txt")).0, 13140);
     assert_eq!(day11(include_str!("../input/t11.txt")), (10605, 2713310158));
+    assert_eq!(day12(include_bytes!("../input/t12.txt")), (31, 29));
 }
 
 fn main() {
@@ -451,4 +527,6 @@ fn main() {
     println!("Day10: {first} and \n{second}");
     let (first, second) = day11(include_str!("../input/11.txt"));
     println!("Day11: {first} and {second}");
+    let (first, second) = day12(include_bytes!("../input/12.txt"));
+    println!("Day12: {first} and {second}");
 }
