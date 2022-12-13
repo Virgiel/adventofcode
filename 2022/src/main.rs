@@ -1,8 +1,13 @@
 #![feature(slice_partition_dedup)]
 #![feature(iter_array_chunks)]
 #![feature(get_many_mut)]
+#![feature(iter_order_by)]
 
-use std::{collections::BTreeSet, iter::Peekable};
+use std::{
+    cmp::Ordering,
+    collections::BTreeSet,
+    iter::{empty, once, Peekable},
+};
 
 fn day1(input: &str) -> (usize, usize) {
     let result = input
@@ -454,13 +459,12 @@ fn day12(input: &[u8]) -> (u16, u16) {
             let current = grid[pos.1 * w + pos.0];
             let new_paths = [(1, 0), (0, 1)]
                 .into_iter()
-                .map(|(c, r)| {
+                .flat_map(|(c, r)| {
                     [
                         (pos.0.wrapping_sub(c), pos.1.wrapping_sub(r)),
                         (pos.0 + c, pos.1 + r),
                     ]
                 })
-                .flatten()
                 // Filter positions outside of the grid
                 .filter_map(|pos| {
                     ((pos.0 < w && pos.1 < grid.len() / w)
@@ -485,6 +489,82 @@ fn day12(input: &[u8]) -> (u16, u16) {
     )
 }
 
+fn day13(input: &str) -> (usize, usize) {
+    enum Ty<'a> {
+        Nb(u8),
+        Iter(Box<dyn Iterator<Item = Ty<'a>> + 'a>),
+    }
+
+    fn parse(str: &str) -> Ty<'_> {
+        if str.is_empty() {
+            Ty::Iter(Box::new(empty()))
+        } else if str.starts_with('[') && str.ends_with(']') {
+            let mut str = &str[1..str.len() - 1];
+            Ty::Iter(Box::new(std::iter::from_fn(move || {
+                if str.is_empty() {
+                    None
+                } else if str.starts_with('[') {
+                    let mut skip = 0;
+                    let pos = str
+                        .find(|c| {
+                            if c == '[' {
+                                skip += 1;
+                            } else if c == ']' {
+                                skip -= 1;
+                                if skip == 0 {
+                                    return true;
+                                }
+                            }
+                            false
+                        })
+                        .unwrap();
+                    Some((&str[..pos + 1], &str[(pos + 2).min(str.len())..]))
+                } else if let Some(pos) = str.find(',') {
+                    Some((&str[..pos], &str[(pos + 1)..]))
+                } else {
+                    Some((str, ""))
+                }
+                .map(|(item, remain)| {
+                    str = remain;
+                    parse(item)
+                })
+            })))
+        } else {
+            Ty::Nb(str.parse().unwrap())
+        }
+    }
+
+    fn ordered<'a>(a: Ty<'a>, b: Ty<'a>) -> Ordering {
+        match (a, b) {
+            (Ty::Nb(a), Ty::Nb(b)) => a.cmp(&b),
+            (Ty::Nb(a), Ty::Iter(b)) => once(Ty::Nb(a)).cmp_by(b, ordered),
+            (Ty::Iter(a), Ty::Nb(b)) => a.cmp_by(once(Ty::Nb(b)), ordered),
+            (Ty::Iter(a), Ty::Iter(b)) => a.cmp_by(b, ordered),
+        }
+    }
+
+    let dividers = ["[[2]]", "[[6]]"];
+    let mut packets: Vec<_> = dividers.to_vec();
+    let sum = input
+        .split("\n\n")
+        .enumerate()
+        .map(|(i, group)| {
+            let (first, second) = group.split_once('\n').unwrap();
+            packets.extend([first, second].iter());
+            match ordered(parse(first), parse(second)) {
+                Ordering::Equal | Ordering::Less => i + 1,
+                _ => 0,
+            }
+        })
+        .sum();
+    packets.sort_unstable_by(|a, b| ordered(parse(a), parse(b)));
+    let key = dividers
+        .iter()
+        .map(|d| packets.iter().position(|it| it == d).unwrap() + 1)
+        .product();
+    (sum, key)
+}
+
 #[test]
 fn test() {
     assert_eq!(day1(include_str!("../input/t01.txt")), (24000, 45000));
@@ -502,6 +582,7 @@ fn test() {
     assert_eq!(day10(include_str!("../input/t10.txt")).0, 13140);
     assert_eq!(day11(include_str!("../input/t11.txt")), (10605, 2713310158));
     assert_eq!(day12(include_bytes!("../input/t12.txt")), (31, 29));
+    assert_eq!(day13(include_str!("../input/t13.txt")), (13, 140));
 }
 
 fn main() {
@@ -529,4 +610,6 @@ fn main() {
     println!("Day11: {first} and {second}");
     let (first, second) = day12(include_bytes!("../input/12.txt"));
     println!("Day12: {first} and {second}");
+    let (first, second) = day13(include_str!("../input/13.txt"));
+    println!("Day13: {first} and {second}");
 }
