@@ -565,6 +565,83 @@ fn day13(input: &str) -> (usize, usize) {
     (sum, key)
 }
 
+fn day14(input: &str) -> (usize, usize) {
+    let paths = input.split('\n').map(|l| {
+        l.split(" -> ").map(|c| {
+            let (x, y) = c.split_once(',').unwrap();
+            (x.parse::<u16>().unwrap(), y.parse::<u16>().unwrap())
+        })
+    });
+
+    // Parse dimensions
+
+    let mut min_x = u16::MAX;
+    let mut max_x = 0;
+    let mut h = 0;
+
+    for path in paths.clone() {
+        for (x, y) in path {
+            min_x = min_x.min(x);
+            max_x = max_x.max(x);
+            h = h.max(y + 1);
+        }
+    }
+
+    // Init grid
+    let w = (h + 2) * 2 + 1;
+    min_x -= (w - (max_x - min_x)) / 2;
+    let mut grid = vec![false; (w * (h + 1)) as usize];
+
+    for path in paths {
+        let mut from: Option<(u16, u16)> = None;
+        for to in path {
+            if let Some(from) = from {
+                for x in from.0.min(to.0)..=from.0.max(to.0) {
+                    for y in from.1.min(to.1)..=from.1.max(to.1) {
+                        grid[(y * w + (x - min_x)) as usize] = true
+                    }
+                }
+            }
+            from = Some(to);
+        }
+    }
+
+    fn sim(mut grid: Vec<bool>, min_x: u16, w: u16, h: u16, break_out: bool) -> usize {
+        let mut count = 0;
+        'sim: while !grid[(500 - min_x) as usize] {
+            let mut pos = (500, 0);
+            'mov: loop {
+                let y = pos.1 + 1;
+                let directions = [pos.0, pos.0 - 1, pos.0 + 1];
+                for x in directions {
+                    if y > h {
+                        if break_out {
+                            break 'sim;
+                        } else {
+                            break;
+                        }
+                    }
+                    if !grid[(y * w + (x - min_x)) as usize] {
+                        pos = (x, y);
+                        continue 'mov;
+                    }
+                }
+                count += 1;
+                grid[(pos.1 * w + (pos.0 - min_x)) as usize] = true;
+                // stuck
+                break 'mov;
+            }
+        }
+        count
+    }
+
+    // Simulate part 1
+    (
+        sim(grid.clone(), min_x, w, h, true),
+        sim(grid, min_x, w, h, false),
+    )
+}
+
 #[test]
 fn test() {
     assert_eq!(day1(include_str!("../input/t01.txt")), (24000, 45000));
@@ -583,6 +660,7 @@ fn test() {
     assert_eq!(day11(include_str!("../input/t11.txt")), (10605, 2713310158));
     assert_eq!(day12(include_bytes!("../input/t12.txt")), (31, 29));
     assert_eq!(day13(include_str!("../input/t13.txt")), (13, 140));
+    assert_eq!(day14(include_str!("../input/t14.txt")), (24, 93));
 }
 
 fn main() {
@@ -612,4 +690,6 @@ fn main() {
     println!("Day12: {first} and {second}");
     let (first, second) = day13(include_str!("../input/13.txt"));
     println!("Day13: {first} and {second}");
+    let (first, second) = day14(include_str!("../input/14.txt"));
+    println!("Day14: {first} and {second}");
 }
