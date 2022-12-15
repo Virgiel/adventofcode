@@ -146,17 +146,17 @@ fn day5(input: &str) -> (String, String) {
 
 fn day6(str: &[u8]) -> (usize, usize) {
     fn find<const N: usize>(str: &[u8]) -> usize {
-        str.windows(N)
-            .position(|win| {
-                let mut set: u32 = 0;
-                win.iter().all(|c| {
-                    let off = c - b'a';
-                    set ^= 1 << off;
-                    (1 << off & set) != 0
-                })
-            })
-            .unwrap()
-            + N
+        let mut set: u32 = 0;
+        for i in 0..str.len() {
+            set ^= 1 << (str[i] - b'a');
+            if i >= N {
+                set ^= 1 << (str[i - N] - b'a');
+            }
+            if (set.count_ones() as usize) == N {
+                return i + 1;
+            }
+        }
+        unreachable!()
     }
 
     (find::<4>(str), find::<14>(str))
@@ -642,6 +642,72 @@ fn day14(input: &str) -> (usize, usize) {
     )
 }
 
+fn day15(y: i64, search: i64, input: &str) -> (usize, usize) {
+    let (sensors, beacons) = input
+        .split('\n')
+        .fold((Vec::new(), BTreeSet::new()), |mut out, l| {
+            let (sensor, beacon) = l.split_once(": ").unwrap();
+            let sensor = sensor.strip_prefix("Sensor at ").unwrap();
+            let beacon = beacon.strip_prefix("closest beacon is at ").unwrap();
+            let pos_parser = |l: &str| {
+                let (x, y) = l.strip_prefix("x=").unwrap().split_once(", y=").unwrap();
+                (x.parse::<i64>().unwrap(), y.parse::<i64>().unwrap())
+            };
+            let sensor = pos_parser(sensor);
+            let beacon = pos_parser(beacon);
+            let dist = sensor.0.abs_diff(beacon.0) + sensor.1.abs_diff(beacon.1);
+            out.0.push((sensor, dist));
+            out.1.insert(beacon);
+            out
+        });
+
+    fn intervals(y: i64, sensors: &[((i64, i64), u64)]) -> Vec<(i64, i64)> {
+        let mut ints: Vec<_> = sensors
+            .iter()
+            .filter_map(|(s, dist)| {
+                let diff = s.1.abs_diff(y);
+                (diff < *dist).then(|| {
+                    let diff = (dist - diff) as i64;
+                    (s.0 - diff, s.0 + diff)
+                })
+            })
+            .collect();
+        ints.sort_unstable();
+        let mut c = 0;
+        for i in 1..ints.len() {
+            if ints[c].1 >= ints[i].0 {
+                ints[c].1 = ints[c].1.max(ints[i].1);
+            } else {
+                c += 1;
+                ints[c] = ints[i];
+            }
+        }
+        ints.truncate(c + 1);
+        ints
+    }
+
+    let sum: i64 = intervals(y, &sensors)
+        .into_iter()
+        .map(|(s, e)| (e - s) + 1)
+        .sum();
+    let line = sum as usize - beacons.iter().filter(|it| it.1 == y).count();
+
+    fn frequency(search: i64, sensors: &[((i64, i64), u64)]) -> usize {
+        for y in 0..search + 1 {
+            let ints = intervals(y, sensors);
+            for (s, e) in ints {
+                if s <= 0 && e > search {
+                    break;
+                } else if s <= 0 {
+                    return ((e + 1) * 4000000 + y) as usize;
+                }
+            }
+        }
+        unreachable!()
+    }
+    (line, frequency(search, &sensors))
+}
+
 #[test]
 fn test() {
     assert_eq!(day1(include_str!("../input/t01.txt")), (24000, 45000));
@@ -661,6 +727,10 @@ fn test() {
     assert_eq!(day12(include_bytes!("../input/t12.txt")), (31, 29));
     assert_eq!(day13(include_str!("../input/t13.txt")), (13, 140));
     assert_eq!(day14(include_str!("../input/t14.txt")), (24, 93));
+    assert_eq!(
+        day15(10, 20, include_str!("../input/t15.txt")),
+        (26, 56000011)
+    );
 }
 
 fn main() {
@@ -692,4 +762,6 @@ fn main() {
     println!("Day13: {first} and {second}");
     let (first, second) = day14(include_str!("../input/14.txt"));
     println!("Day14: {first} and {second}");
+    let (first, second) = day15(2000000, 4000000, include_str!("../input/15.txt"));
+    println!("Day15: {first} and {second}");
 }
