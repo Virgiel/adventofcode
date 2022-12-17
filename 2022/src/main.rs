@@ -798,6 +798,81 @@ fn day16(input: &str) -> (u64, u64) {
     )
 }
 
+fn day17(input: &[u8]) -> (usize, usize) {
+    fn cmp(input: &[u8], nb: usize) -> usize {
+        const SHAPES: [&[(usize, usize)]; 5] = [
+            &[(2, 0), (3, 0), (4, 0), (5, 0)],
+            &[(3, 0), (2, 1), (3, 1), (4, 1), (3, 2)],
+            &[(2, 0), (3, 0), (4, 0), (4, 1), (4, 2)],
+            &[(2, 0), (2, 1), (2, 2), (2, 3)],
+            &[(2, 0), (3, 0), (2, 1), (3, 1)],
+        ];
+        let mut buff = [(0, 0); 5];
+        let mut chimney = vec![];
+        let mut skiped_height = 0;
+        let mut input_idx = 0;
+        let mut shape_idx = 0;
+        let mut repeat = (usize::MAX, 0, 0, 0);
+
+        while shape_idx < nb {
+            let shape_off = shape_idx % SHAPES.len();
+            shape_idx += 1;
+            let shape = SHAPES[shape_off];
+            buff[..shape.len()].copy_from_slice(shape);
+            let shape = &mut buff[..shape.len()];
+            let height = chimney.len() / 7 + 3;
+            shape.iter_mut().for_each(|(_, y)| *y += height);
+            loop {
+                let input_off = input_idx % input.len();
+                input_idx += 1;
+
+                // Horizontal move
+                if input[input_off] == b'<' {
+                    if shape
+                        .iter()
+                        .all(|(x, y)| *x > 0 && !chimney.get(y * 7 + x - 1).unwrap_or(&false))
+                    {
+                        shape.iter_mut().for_each(|(x, _)| *x -= 1);
+                    }
+                } else if shape
+                    .iter()
+                    .all(|(x, y)| *x < 6 && !chimney.get(y * 7 + x + 1).unwrap_or(&false))
+                {
+                    shape.iter_mut().for_each(|(x, _)| *x += 1);
+                };
+
+                // Vertical move
+                if shape
+                    .iter()
+                    .all(|(x, y)| *y > 0 && !chimney.get((y - 1) * 7 + x).unwrap_or(&false))
+                {
+                    shape.iter_mut().for_each(|(_, y)| *y -= 1);
+                } else {
+                    let new_len =
+                        ((shape.iter().map(|(_, y)| *y).max().unwrap() + 1) * 7).max(chimney.len());
+                    chimney.resize(new_len, false);
+                    shape.iter().for_each(|(x, y)| chimney[y * 7 + x] = true);
+
+                    // Search for loop
+                    let height = chimney.len() / 7;
+                    if input_off < repeat.0 {
+                        repeat = (input_off, shape_off, shape_idx, height);
+                    } else if repeat.0 == input_off && repeat.1 == shape_off {
+                        // Found loop
+                        let rep_len = shape_idx - repeat.2;
+                        let rep = (nb - shape_idx) / rep_len;
+                        skiped_height = rep * (height - repeat.3);
+                        shape_idx += rep * rep_len;
+                    }
+                    break;
+                }
+            }
+        }
+        chimney.len() / 7 + skiped_height
+    }
+    (cmp(input, 2022), cmp(input, 1000000000000))
+}
+
 #[test]
 fn test() {
     assert_eq!(day1(include_str!("../input/t01.txt")), (24000, 45000));
@@ -822,6 +897,10 @@ fn test() {
         (26, 56000011)
     );
     assert_eq!(day16(include_str!("../input/t16.txt")), (1651, 1707));
+    assert_eq!(
+        day17(include_bytes!("../input/t17.txt")),
+        (3068, 1514285714288)
+    );
 }
 
 fn main() {
@@ -857,4 +936,6 @@ fn main() {
     println!("Day15: {first} and {second}");
     let (first, second) = day16(include_str!("../input/16.txt"));
     println!("Day16: {first} and {second}");
+    let (first, second) = day17(include_bytes!("../input/17.txt"));
+    println!("Day17: {first} and {second}");
 }
