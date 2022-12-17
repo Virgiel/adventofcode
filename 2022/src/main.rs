@@ -5,7 +5,7 @@
 
 use std::{
     cmp::Ordering,
-    collections::BTreeSet,
+    collections::{BTreeMap, BTreeSet},
     iter::{empty, once, Peekable},
 };
 
@@ -708,6 +708,96 @@ fn day15(y: i64, search: i64, input: &str) -> (usize, usize) {
     (line, frequency(search, &sensors))
 }
 
+fn day16(input: &str) -> (u64, u64) {
+    let mut names: Vec<_> = input.split('\n').map(|l| &l[6..8]).collect();
+    names.sort_unstable();
+    let valves: Vec<_> = input
+        .split('\n')
+        .fold(vec![(0, 0); names.len()], |mut out, l| {
+            let (valve, tunels) = l.split_once(';').unwrap();
+            let idx = names.binary_search(&&valve[6..8]).unwrap();
+            let flow = valve[23..].parse::<u8>().unwrap();
+            let tunnel_set = tunels.rsplit(", ").fold(0u64, |set, n| {
+                set | (1 << names.binary_search(&&n[n.len() - 2..]).unwrap())
+            });
+            out[idx] = (flow, tunnel_set);
+            out
+        });
+
+    fn moves(p: u8, opened: u64, valves: &[(u8, u64)], mut inner: impl FnMut(u8, u64)) {
+        if (1 << p) & opened == 0 {
+            inner(p, opened | 1 << p);
+        }
+
+        for p in (0..valves.len()).filter(|i| valves[p as usize].1 & (1 << *i) != 0) {
+            inner(p as u8, opened);
+        }
+    }
+
+    // Heap DFS search
+    fn cmp<T: Default + Ord + Copy, F: Fn(T, u64, u64, u8, &mut Vec<(T, u64, u64, u8)>)>(
+        valves: &[(u8, u64)],
+        time: u8,
+        lambda: F,
+    ) -> u64 {
+        let max: u64 = valves.iter().map(|(_, flow)| flow).sum();
+        let mut best = 0;
+        let mut states = vec![(
+            T::default(),
+            valves
+                .iter()
+                .enumerate()
+                .filter(|(_, (flow, _))| *flow == 0)
+                .fold(0u64, |set, (i, _)| set | (1 << i)),
+            0u64,
+            time,
+        )];
+        let mut mem = BTreeMap::new();
+        while let Some((pos, opened, sum, time)) = states.pop() {
+            if let Some(prev) = mem.get(&(time, pos)) {
+                if *prev >= sum {
+                    continue;
+                }
+            }
+            mem.insert((time, pos), sum);
+            let amount = valves
+                .iter()
+                .enumerate()
+                .filter_map(|(i, (flow, _))| ((1 << i & opened) != 0).then_some(*flow as u64))
+                .sum::<u64>();
+
+            if time == 0
+                || opened.count_ones() == valves.len() as u32
+                || sum + time as u64 * max < best
+            {
+                best = best.max(sum + time as u64 * amount);
+                continue;
+            }
+
+            lambda(pos, opened, sum + amount, time - 1, &mut states);
+        }
+
+        best
+    }
+
+    (
+        cmp(&valves, 30, |pos, opened, sum, time, states| {
+            moves(pos, opened, &valves, |pos, opened| {
+                states.push((pos, opened, sum, time));
+            })
+        }),
+        cmp(&valves, 26, |(a, b), opened, sum, time, states| {
+            moves(a, opened, &valves, |a, opened| {
+                moves(b, opened, &valves, |b, opened| {
+                    if a != b {
+                        states.push(((a.min(b), a.max(b)), opened, sum, time));
+                    }
+                })
+            })
+        }),
+    )
+}
+
 #[test]
 fn test() {
     assert_eq!(day1(include_str!("../input/t01.txt")), (24000, 45000));
@@ -731,6 +821,7 @@ fn test() {
         day15(10, 20, include_str!("../input/t15.txt")),
         (26, 56000011)
     );
+    assert_eq!(day16(include_str!("../input/t16.txt")), (1651, 1707));
 }
 
 fn main() {
@@ -764,4 +855,6 @@ fn main() {
     println!("Day14: {first} and {second}");
     let (first, second) = day15(2000000, 4000000, include_str!("../input/15.txt"));
     println!("Day15: {first} and {second}");
+    let (first, second) = day16(include_str!("../input/16.txt"));
+    println!("Day16: {first} and {second}");
 }
