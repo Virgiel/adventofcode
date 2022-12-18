@@ -873,6 +873,69 @@ fn day17(input: &[u8]) -> (usize, usize) {
     (cmp(input, 2022), cmp(input, 1000000000000))
 }
 
+fn day18(input: &str) -> (usize, usize) {
+    let pos = input.split('\n').map(|l| {
+        let mut split = l.split(',');
+        (
+            split.next().unwrap().parse::<usize>().unwrap(),
+            split.next().unwrap().parse::<usize>().unwrap(),
+            split.next().unwrap().parse::<usize>().unwrap(),
+        )
+    });
+    let len = pos.clone().map(|(x, y, z)| x.max(y).max(z)).max().unwrap() + 1;
+    let mut space = vec![0u8; len * len * len];
+    for (x, y, z) in pos.clone() {
+        space[x + y * len + z * len * len] = 1u8;
+    }
+
+    fn fill_water(x: usize, y: usize, z: usize, len: usize, space: &mut [u8]) {
+        space[x + y * len + z * len * len] = 2u8;
+        for (x, y, z) in [(1, 0, 0), (0, 1, 0), (0, 0, 1)]
+            .into_iter()
+            .flat_map(|(dx, dy, dz)| {
+                [
+                    (x.wrapping_sub(dx), y.wrapping_sub(dy), z.wrapping_sub(dz)),
+                    (x + dx, y + dy, z + dz),
+                ]
+            })
+        {
+            if x < len && y < len && z < len && space[x + y * len + z * len * len] == 0u8 {
+                fill_water(x, y, z, len, space)
+            }
+        }
+    }
+    fill_water(0, 0, 0, len, &mut space);
+    let mut water_sides = 0;
+    let mut sides = 0;
+    for x in 0..len {
+        for y in 0..len {
+            for z in 0..len {
+                if space[x + y * len + z * len * len] == 1u8 {
+                    for (x, y, z) in
+                        [(1, 0, 0), (0, 1, 0), (0, 0, 1)]
+                            .into_iter()
+                            .flat_map(|(dx, dy, dz)| {
+                                [
+                                    (x.wrapping_sub(dx), y.wrapping_sub(dy), z.wrapping_sub(dz)),
+                                    (x + dx, y + dy, z + dz),
+                                ]
+                            })
+                    {
+                        water_sides += (!(x < len && y < len && z < len)
+                            || space[x + y * len + z * len * len] == 2u8)
+                            as usize;
+                        sides += (!(x < len && y < len && z < len)
+                            || (space[x + y * len + z * len * len] == 0u8
+                                || space[x + y * len + z * len * len] == 2u8))
+                            as usize;
+                    }
+                }
+            }
+        }
+    }
+    (sides, water_sides)
+}
+
 #[test]
 fn test() {
     assert_eq!(day1(include_str!("../input/t01.txt")), (24000, 45000));
@@ -901,10 +964,11 @@ fn test() {
         day17(include_bytes!("../input/t17.txt")),
         (3068, 1514285714288)
     );
+    assert_eq!(day18(include_str!("../input/t18.txt")), (64, 58));
 }
 
 fn main() {
-    let (first, second) = day1(include_str!("../input/01.txt"));
+    /*let (first, second) = day1(include_str!("../input/01.txt"));
     println!("Day1: {first} and {second}");
     let (first, second) = day2(include_bytes!("../input/02.txt"));
     println!("Day2: {first} and {second}");
@@ -937,5 +1001,7 @@ fn main() {
     let (first, second) = day16(include_str!("../input/16.txt"));
     println!("Day16: {first} and {second}");
     let (first, second) = day17(include_bytes!("../input/17.txt"));
-    println!("Day17: {first} and {second}");
+    println!("Day17: {first} and {second}");*/
+    let (first, second) = day18(include_str!("../input/18.txt"));
+    println!("Day18: {first} and {second}");
 }
