@@ -324,74 +324,75 @@ fn day10(input: &str) -> (usize, String) {
 }
 
 fn day11(input: &str) -> (usize, usize) {
-    fn cmp<const N: usize, const DIV: u64>(input: &str) -> usize {
-        enum Op {
-            Add(u8),
-            MulSelf,
-            Mul(u8),
-        }
+    #[derive(Clone)]
+    enum Op {
+        Add(u8),
+        MulSelf,
+        Mul(u8),
+    }
 
-        impl Op {
-            pub fn apply(&self, value: u64) -> u64 {
-                match self {
-                    Op::Add(v) => value + *v as u64,
-                    Op::MulSelf => value * value,
-                    Op::Mul(v) => value * *v as u64,
-                }
+    impl Op {
+        pub fn apply(&self, value: u64) -> u64 {
+            match self {
+                Op::Add(v) => value + *v as u64,
+                Op::MulSelf => value * value,
+                Op::Mul(v) => value * *v as u64,
             }
         }
+    }
 
-        struct Monkey {
-            items: Vec<u64>,
-            operation: Op,
-            test: u8,
-            if_true: u8,
-            if_false: u8,
-        }
+    #[derive(Clone)]
+    struct Monkey {
+        items: Vec<u64>,
+        operation: Op,
+        test: u8,
+        if_true: u8,
+        if_false: u8,
+    }
 
-        let mut monkeys: Vec<_> = input
-            .split("\n\n")
-            .map(|m| {
-                let mut lines = m.split('\n').skip(1);
-                let items = lines
+    let monkeys: Vec<_> = input
+        .split("\n\n")
+        .map(|m| {
+            let mut lines = m.split('\n').skip(1);
+            let items = lines
+                .next()
+                .unwrap()
+                .strip_prefix("  Starting items: ")
+                .unwrap()
+                .split(", ")
+                .map(|l| l.parse().unwrap())
+                .collect();
+            let operation = {
+                let (op, value) = lines
                     .next()
                     .unwrap()
-                    .strip_prefix("  Starting items: ")
+                    .strip_prefix("  Operation: new = old ")
                     .unwrap()
-                    .split(", ")
-                    .map(|l| l.parse().unwrap())
-                    .collect();
-                let operation = {
-                    let (op, value) = lines
-                        .next()
-                        .unwrap()
-                        .strip_prefix("  Operation: new = old ")
-                        .unwrap()
-                        .split_once(' ')
-                        .unwrap();
-                    if op == "+" {
-                        Op::Add(value.parse().unwrap())
-                    } else if value == "old" {
-                        Op::MulSelf
-                    } else {
-                        Op::Mul(value.parse().unwrap())
-                    }
-                };
-                let sp =
-                    |str: &str, prefix: &str| str.strip_prefix(prefix).unwrap().parse().unwrap();
-                let test = sp(lines.next().unwrap(), "  Test: divisible by ");
-                let if_true = sp(lines.next().unwrap(), "    If true: throw to monkey ");
-                let if_false = sp(lines.next().unwrap(), "    If false: throw to monkey ");
-
-                Monkey {
-                    items,
-                    operation,
-                    test,
-                    if_true,
-                    if_false,
+                    .split_once(' ')
+                    .unwrap();
+                if op == "+" {
+                    Op::Add(value.parse().unwrap())
+                } else if value == "old" {
+                    Op::MulSelf
+                } else {
+                    Op::Mul(value.parse().unwrap())
                 }
-            })
-            .collect();
+            };
+            let sp = |str: &str, prefix: &str| str.strip_prefix(prefix).unwrap().parse().unwrap();
+            let test = sp(lines.next().unwrap(), "  Test: divisible by ");
+            let if_true = sp(lines.next().unwrap(), "    If true: throw to monkey ");
+            let if_false = sp(lines.next().unwrap(), "    If false: throw to monkey ");
+
+            Monkey {
+                items,
+                operation,
+                test,
+                if_true,
+                if_false,
+            }
+        })
+        .collect();
+    fn cmp<const N: usize, const DIV: u64>(mut monkeys: Vec<Monkey>) -> usize {
         let divisor: u64 = monkeys.iter().map(|m| m.test as u64).product();
         let mut counts: Vec<_> = monkeys.iter().map(|_| 0).collect();
         for _ in 0..N {
@@ -412,7 +413,7 @@ fn day11(input: &str) -> (usize, usize) {
         counts.sort_unstable();
         counts[counts.len() - 2..].iter().product()
     }
-    (cmp::<20, 3>(input), cmp::<10000, 1>(input))
+    (cmp::<20, 3>(monkeys.clone()), cmp::<10000, 1>(monkeys))
 }
 
 fn day12(input: &[u8]) -> (u16, u16) {
@@ -936,6 +937,146 @@ fn day18(input: &str) -> (usize, usize) {
     (sides, water_sides)
 }
 
+fn day19(input: &str) -> (usize, usize) {
+    #[derive(Debug)]
+    struct Blueprint {
+        ore: u8,
+        clay: u8,
+        obsidian: (u8, u8),
+        geode: (u8, u8),
+        max_ore: u8,
+    }
+    #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+    struct State {
+        ore: u8,
+        clay: u8,
+        obsidian: u8,
+        geode: u8,
+        r_ore: u8,
+        r_clay: u8,
+        r_obsidian: u8,
+        r_geode: u8,
+    }
+    let blueprints: Vec<_> = input
+        .split('\n')
+        .map(|l| {
+            let mut words = l.split(' ');
+            let ore = words.nth(6).unwrap().parse().unwrap();
+            let clay = words.nth(5).unwrap().parse().unwrap();
+            let obsidian0 = words.nth(5).unwrap().parse().unwrap();
+            let obsidian1 = words.nth(2).unwrap().parse().unwrap();
+            let geode0 = words.nth(5).unwrap().parse().unwrap();
+            let geode1 = words.nth(2).unwrap().parse().unwrap();
+            Blueprint {
+                ore,
+                clay,
+                obsidian: (obsidian0, obsidian1),
+                geode: (geode0, geode1),
+                max_ore: ore.max(clay).max(obsidian0).max(geode0),
+            }
+        })
+        .collect();
+
+    fn cpm(mut state: State, mem: &mut BTreeMap<State, u8>, b: &Blueprint, time: u8) -> u8 {
+        if time == 0 {
+            return state.geode;
+        }
+        if let Some(prev) = mem.get(&state) {
+            if *prev >= time {
+                return 0;
+            }
+        }
+        mem.insert(state, time);
+
+        let buy = (
+            state.ore >= b.ore && state.r_ore < b.max_ore,
+            state.ore >= b.clay && state.r_clay < b.obsidian.1,
+            state.ore >= b.obsidian.0 && state.clay >= b.obsidian.1 && state.r_obsidian < b.geode.1,
+            state.ore >= b.geode.0 && state.obsidian >= b.geode.1,
+        );
+        // Mine
+        state.ore += state.r_ore;
+        state.clay += state.r_clay;
+        state.obsidian += state.r_obsidian;
+        state.geode += state.r_geode;
+        // Explore
+        [
+            buy.3.then(|| State {
+                ore: state.ore - b.geode.0,
+                obsidian: state.obsidian - b.geode.1,
+                r_geode: state.r_geode + 1,
+                ..state
+            }),
+            (!buy.3 && buy.2).then(|| State {
+                ore: state.ore - b.obsidian.0,
+                clay: state.clay - b.obsidian.1,
+                r_obsidian: state.r_obsidian + 1,
+                ..state
+            }),
+            (!buy.3 && buy.1).then(|| State {
+                ore: state.ore - b.clay,
+                r_clay: state.r_clay + 1,
+                ..state
+            }),
+            (!buy.3 && buy.0).then(|| State {
+                ore: state.ore - b.ore,
+                r_ore: state.r_ore + 1,
+                ..state
+            }),
+            (!buy.3).then_some(state),
+        ]
+        .into_iter()
+        .filter_map(|s| s.map(|s| cpm(s, mem, b, time - 1)))
+        .max()
+        .unwrap()
+    }
+    (
+        blueprints
+            .iter()
+            .enumerate()
+            .map(|(i, b)| {
+                (i + 1)
+                    * cpm(
+                        State {
+                            ore: 0,
+                            clay: 0,
+                            obsidian: 0,
+                            geode: 0,
+                            r_ore: 1,
+                            r_clay: 0,
+                            r_obsidian: 0,
+                            r_geode: 0,
+                        },
+                        &mut BTreeMap::new(),
+                        b,
+                        24,
+                    ) as usize
+            })
+            .sum(),
+        blueprints
+            .iter()
+            .take(3)
+            .map(|b| {
+                cpm(
+                    State {
+                        ore: 0,
+                        clay: 0,
+                        obsidian: 0,
+                        geode: 0,
+                        r_ore: 1,
+                        r_clay: 0,
+                        r_obsidian: 0,
+                        r_geode: 0,
+                    },
+                    &mut BTreeMap::new(),
+                    b,
+                    32,
+                ) as usize
+            })
+            .product(),
+    )
+}
+
 #[test]
 fn test() {
     assert_eq!(day1(include_str!("../input/t01.txt")), (24000, 45000));
@@ -965,10 +1106,11 @@ fn test() {
         (3068, 1514285714288)
     );
     assert_eq!(day18(include_str!("../input/t18.txt")), (64, 58));
+    assert_eq!(day19(include_str!("../input/t19.txt")), (33, 3472));
 }
 
 fn main() {
-    /*let (first, second) = day1(include_str!("../input/01.txt"));
+    let (first, second) = day1(include_str!("../input/01.txt"));
     println!("Day1: {first} and {second}");
     let (first, second) = day2(include_bytes!("../input/02.txt"));
     println!("Day2: {first} and {second}");
@@ -1001,7 +1143,9 @@ fn main() {
     let (first, second) = day16(include_str!("../input/16.txt"));
     println!("Day16: {first} and {second}");
     let (first, second) = day17(include_bytes!("../input/17.txt"));
-    println!("Day17: {first} and {second}");*/
+    println!("Day17: {first} and {second}");
     let (first, second) = day18(include_str!("../input/18.txt"));
     println!("Day18: {first} and {second}");
+    let (first, second) = day19(include_str!("../input/19.txt"));
+    println!("Day19: {first} and {second}");
 }
