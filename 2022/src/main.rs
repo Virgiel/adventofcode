@@ -3,10 +3,12 @@
 #![feature(get_many_mut)]
 #![feature(iter_order_by)]
 
+use core::panic;
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, BTreeSet},
     iter::{empty, once, Peekable},
+    thread::panicking,
 };
 
 fn day1(input: &str) -> (usize, usize) {
@@ -1077,9 +1079,38 @@ fn day19(input: &str) -> (usize, usize) {
     )
 }
 
+fn day20(input: &str) -> (i64, i64) {
+    fn modulo(a: i64, n: i64) -> i64 {
+        (a % n + n) % n
+    }
+    fn cmp(nbs: &[i16], mul: i64, mix: u8) -> i64 {
+        let mut mixed: Vec<_> = (0..nbs.len() as u16).collect();
+        for _ in 0..mix {
+            for (pos, nb) in nbs.iter().enumerate() {
+                let from = mixed.iter().position(|i| *i == pos as u16).unwrap();
+                let to = modulo(from as i64 + (*nb) as i64 * mul, nbs.len() as i64 - 1);
+                mixed.remove(from);
+                mixed.insert(to as usize, pos as u16);
+            }
+        }
+        let zero = nbs.iter().position(|n| *n == 0).unwrap() as u16;
+        let zero = mixed.iter().position(|i| *i == zero).unwrap();
+        [1000, 2000, 3000]
+            .iter()
+            .map(|i| nbs[mixed[(zero + i) % mixed.len()] as usize] as i64 * mul)
+            .sum()
+    }
+    let nbs: Vec<_> = input
+        .split('\n')
+        .map(|l| l.parse::<i16>().unwrap())
+        .collect();
+
+    (cmp(&nbs, 1, 1), cmp(&nbs, 811589153, 10))
+}
+
 #[test]
 fn test() {
-    assert_eq!(day1(include_str!("../input/t01.txt")), (24000, 45000));
+    /*  assert_eq!(day1(include_str!("../input/t01.txt")), (24000, 45000));
     assert_eq!(day2(include_bytes!("../input/t02.txt")), (15, 12));
     assert_eq!(day3(include_bytes!("../input/t03.txt")), (157, 70));
     assert_eq!(day4(include_str!("../input/t04.txt")), (2, 4));
@@ -1106,11 +1137,12 @@ fn test() {
         (3068, 1514285714288)
     );
     assert_eq!(day18(include_str!("../input/t18.txt")), (64, 58));
-    assert_eq!(day19(include_str!("../input/t19.txt")), (33, 3472));
+    assert_eq!(day19(include_str!("../input/t19.txt")), (33, 3472));*/
+    assert_eq!(day20(include_str!("../input/t20.txt")), (3, 1623178306));
 }
 
 fn main() {
-    let (first, second) = day1(include_str!("../input/01.txt"));
+    /*let (first, second) = day1(include_str!("../input/01.txt"));
     println!("Day1: {first} and {second}");
     let (first, second) = day2(include_bytes!("../input/02.txt"));
     println!("Day2: {first} and {second}");
@@ -1147,5 +1179,7 @@ fn main() {
     let (first, second) = day18(include_str!("../input/18.txt"));
     println!("Day18: {first} and {second}");
     let (first, second) = day19(include_str!("../input/19.txt"));
-    println!("Day19: {first} and {second}");
+    println!("Day19: {first} and {second}");*/
+    let (first, second) = day20(include_str!("../input/20.txt"));
+    println!("Day20: {first} and {second}");
 }
