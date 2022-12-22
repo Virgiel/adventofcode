@@ -3,12 +3,10 @@
 #![feature(get_many_mut)]
 #![feature(iter_order_by)]
 
-use core::panic;
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, BTreeSet},
     iter::{empty, once, Peekable},
-    thread::panicking,
 };
 
 fn day1(input: &str) -> (usize, usize) {
@@ -1108,9 +1106,118 @@ fn day20(input: &str) -> (i64, i64) {
     (cmp(&nbs, 1, 1), cmp(&nbs, 811589153, 10))
 }
 
+fn day21(input: &str) -> (usize, usize) {
+    #[derive(Clone, Copy)]
+    enum Cmd {
+        Nb(usize),
+        Op(usize, Op, usize),
+    }
+    #[derive(Clone, Copy)]
+    enum Op {
+        Add,
+        Sub,
+        Mul,
+        Div,
+    }
+    let mut names: Vec<_> = input
+        .split('\n')
+        .map(|l| l.split(':').next().unwrap())
+        .collect();
+    names.sort_unstable();
+    let mut cmds = vec![Cmd::Nb(0); names.len()];
+    input.split('\n').for_each(|l| {
+        let mut cmd = l.split(": ");
+        let i = names.binary_search(&cmd.next().unwrap()).unwrap();
+        let cmd = cmd.next().unwrap();
+        cmds[i] = if let Ok(nb) = cmd.parse() {
+            Cmd::Nb(nb)
+        } else {
+            let mut cmd = cmd.split(' ');
+            let left = names.binary_search(&cmd.next().unwrap()).unwrap();
+            let op = cmd.next().unwrap();
+            let right = names.binary_search(&cmd.next().unwrap()).unwrap();
+            Cmd::Op(
+                left,
+                match op {
+                    "+" => Op::Add,
+                    "-" => Op::Sub,
+                    "*" => Op::Mul,
+                    _ => Op::Div,
+                },
+                right,
+            )
+        };
+    });
+
+    fn compute(i: usize, cmds: &[Cmd]) -> usize {
+        constify(i, cmds, usize::MAX).unwrap()
+    }
+
+    fn constify(i: usize, cmds: &[Cmd], humn: usize) -> Option<usize> {
+        match cmds[i] {
+            Cmd::Nb(nb) => (i != humn).then_some(nb),
+            Cmd::Op(a, op, b) => {
+                constify(a, cmds, humn)
+                    .zip(constify(b, cmds, humn))
+                    .map(|(a, b)| match op {
+                        Op::Add => a + b,
+                        Op::Sub => a - b,
+                        Op::Mul => a * b,
+                        Op::Div => a / b,
+                    })
+            }
+        }
+    }
+
+    fn reverse(i: usize, cmds: &[Cmd], humn: usize, goal: usize) -> usize {
+        match cmds[i] {
+            Cmd::Nb(_) => goal,
+            Cmd::Op(a, op, b) => {
+                if let Some(a) = constify(a, cmds, humn) {
+                    let goal = match op {
+                        Op::Add => goal - a,
+                        Op::Sub => a - goal,
+                        Op::Mul => goal / a,
+                        Op::Div => a / goal,
+                    };
+                    reverse(b, cmds, humn, goal)
+                } else if let Some(b) = constify(b, cmds, humn) {
+                    let goal = match op {
+                        Op::Add => goal - b,
+                        Op::Sub => goal + b,
+                        Op::Mul => goal / b,
+                        Op::Div => goal * b,
+                    };
+                    reverse(a, cmds, humn, goal)
+                } else {
+                    unreachable!()
+                }
+            }
+        }
+    }
+
+    let root = names.binary_search(&"root").unwrap();
+    let humn = names.binary_search(&"humn").unwrap();
+    let part1 = compute(root, &cmds);
+    let part2 = match cmds[root] {
+        Cmd::Op(a, _, b) => {
+            if let Some(goal) = constify(a, &cmds, humn) {
+                reverse(b, &cmds, humn, goal)
+            } else if let Some(goal) = constify(b, &cmds, humn) {
+                reverse(a, &cmds, humn, goal)
+            } else {
+                unreachable!()
+            }
+        }
+        _ => unreachable!(),
+    };
+
+    (part1, part2)
+}
+
 #[test]
 fn test() {
-    /*  assert_eq!(day1(include_str!("../input/t01.txt")), (24000, 45000));
+    assert_eq!(day1(include_str!("../input/t01.txt")), (24000, 45000));
     assert_eq!(day2(include_bytes!("../input/t02.txt")), (15, 12));
     assert_eq!(day3(include_bytes!("../input/t03.txt")), (157, 70));
     assert_eq!(day4(include_str!("../input/t04.txt")), (2, 4));
@@ -1137,12 +1244,13 @@ fn test() {
         (3068, 1514285714288)
     );
     assert_eq!(day18(include_str!("../input/t18.txt")), (64, 58));
-    assert_eq!(day19(include_str!("../input/t19.txt")), (33, 3472));*/
+    assert_eq!(day19(include_str!("../input/t19.txt")), (33, 3472));
     assert_eq!(day20(include_str!("../input/t20.txt")), (3, 1623178306));
+    assert_eq!(day21(include_str!("../input/t21.txt")), (152, 301));
 }
 
 fn main() {
-    /*let (first, second) = day1(include_str!("../input/01.txt"));
+    let (first, second) = day1(include_str!("../input/01.txt"));
     println!("Day1: {first} and {second}");
     let (first, second) = day2(include_bytes!("../input/02.txt"));
     println!("Day2: {first} and {second}");
@@ -1179,7 +1287,9 @@ fn main() {
     let (first, second) = day18(include_str!("../input/18.txt"));
     println!("Day18: {first} and {second}");
     let (first, second) = day19(include_str!("../input/19.txt"));
-    println!("Day19: {first} and {second}");*/
+    println!("Day19: {first} and {second}");
     let (first, second) = day20(include_str!("../input/20.txt"));
     println!("Day20: {first} and {second}");
+    let (first, second) = day21(include_str!("../input/21.txt"));
+    println!("Day21: {first} and {second}");
 }
